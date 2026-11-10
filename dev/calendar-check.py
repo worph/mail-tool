@@ -1,9 +1,14 @@
-"""Spike: log into Roundcube and list the calendars the Kolab CalDAV driver sees."""
+"""Spike: open Roundcube and list the calendars the Kolab CalDAV driver sees.
+The webmail has no login form (MailHub 0.5.0+): set MAILHUB_ASSERTION_SECRET (the app's .env) and
+copy assertion.py next to this script; requests carry the identity AppShield would add.
+"""
+import os, sys; sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from assertion import opener
 import http.cookiejar, re, sys, urllib.parse, urllib.request
 
 RC = "http://mailhub-webmail/"
 jar = http.cookiejar.CookieJar()
-web = urllib.request.build_opener(urllib.request.HTTPCookieProcessor(jar))
+web = opener()
 
 
 def get(params, data=None):
@@ -12,9 +17,7 @@ def get(params, data=None):
         return r.read().decode("utf-8", "replace")
 
 
-tok = re.search(r'"request_token":"([^"]+)"', get({"_task": "login"})).group(1)
-get({"_task": "login", "_action": "login"}, {"_token": tok, "_task": "login", "_action": "login",
-    "_timezone": "UTC", "_user": "admin", "_pass": sys.argv[1]})
+get({"_task": "mail"})  # mailhub_sso logs the identity in
 page = get({"_task": "calendar"})
 cals = re.search(r'"calendars":(\{.*?\}\}),"', page)
 print("calendars env:", cals.group(1)[:800] if cals else "(none in page)")

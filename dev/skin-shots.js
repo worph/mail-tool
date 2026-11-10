@@ -1,6 +1,6 @@
 // Screenshot the webmail in each installed skin: mail, calendar, Settings → Mail accounts.
 // Run on the app network with puppeteer, e.g.
-//   docker run --rm --network mailhub_mailhub-internal -e MAILHUB_PASSWORD=... \
+//   docker run --rm --network mailhub_mailhub-internal -e MAILHUB_ASSERTION="$(python3 assertion.py)" \
 //     -v $PWD:/work -w /work ghcr.io/puppeteer/puppeteer:24.10.0 node skin-shots.js
 // Writes shot-<skin>-<page>.png into the working directory.
 const puppeteer = require('puppeteer');
@@ -18,10 +18,9 @@ const PAGES = {
   const page = await browser.newPage();
   await page.setViewport({ width: 1440, height: 900 });
 
-  await page.goto(RC + '?_task=login', { waitUntil: 'networkidle0' });
-  await page.type('#rcmloginuser', 'admin');
-  await page.type('#rcmloginpwd', process.env.MAILHUB_PASSWORD);
-  await Promise.all([page.waitForNavigation({ waitUntil: 'load' }), page.click('#rcmloginsubmit')]);
+  // No login form since MailHub 0.5.0: the identity AppShield would add (python3 assertion.py).
+  await page.setExtraHTTPHeaders({ 'X-AppShield-Assertion': process.env.MAILHUB_ASSERTION });
+  await page.goto(RC + '?_task=mail', { waitUntil: 'load' });
 
   for (const skin of SKINS) {
     // Save the skin the way Settings → User interface does.

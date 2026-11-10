@@ -2,12 +2,14 @@
 
 python connect-dav-test.py <mailbox password> <dav url> <dav user> <dav password>
 """
+import os as _os, sys as _sys; _sys.path.insert(0, _os.path.dirname(_os.path.abspath(__file__)))
+from assertion import opener  # no login form since MailHub 0.5.0: MAILHUB_ASSERTION_SECRET
 import http.cookiejar, re, sys, urllib.error, urllib.parse, urllib.request
 
 RC = "http://mailhub-webmail/"
 PASSWORD, DAV_URL, DAV_USER, DAV_PASS = sys.argv[1:5]
 jar = http.cookiejar.CookieJar()
-web = urllib.request.build_opener(urllib.request.HTTPCookieProcessor(jar))
+web = opener()
 
 
 def req(params, data=None):
@@ -37,9 +39,7 @@ def save(url, user, pw):
     return msgs or ["(no message)"]
 
 
-tok = token(req({"_task": "login"}))
-req({"_task": "login", "_action": "login"}, {"_token": tok, "_task": "login", "_action": "login",
-    "_timezone": "UTC", "_user": "admin", "_pass": PASSWORD})
+req({"_task": "mail"})  # mailhub_sso logs the identity in
 
 settings = req({"_task": "settings"})
 print("1. Settings has 'Calendar & contacts':", "mailhub_dav" in settings)

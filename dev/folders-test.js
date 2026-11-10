@@ -3,7 +3,7 @@
 // local INBOX/Trash/Junk are not listed, Delete lands in Merged/Trash, deleting
 // there removes for good. Needs a message in some account's INBOX whose subject
 // contains $SUBJECT. Run on the app network:
-//   docker run --rm --network mailhub_mailhub-internal -e MAILHUB_PASSWORD=... -e SUBJECT=... \
+//   docker run --rm --network mailhub_mailhub-internal -e MAILHUB_ASSERTION="$(python3 assertion.py)" -e SUBJECT=... \
 //     -v $PWD:/work -w /work ghcr.io/puppeteer/puppeteer:24.10.0 node folders-test.js
 // Writes folders-inbox.png and folders-trash.png.
 const puppeteer = require('puppeteer');
@@ -24,10 +24,9 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
   if (process.env.DEBUG) page.on('response', async (r) => { if (r.request().method() === 'POST') { let t = ''; try { t = (await r.text()).slice(-300); } catch (e) {} console.log('POST', r.url(), t); } });
   await page.setViewport({ width: 1440, height: 900 });
 
-  await page.goto(RC + '?_task=login', { waitUntil: 'networkidle0' });
-  await page.type('#rcmloginuser', 'admin');
-  await page.type('#rcmloginpwd', process.env.MAILHUB_PASSWORD);
-  await Promise.all([page.waitForNavigation({ waitUntil: 'networkidle0' }), page.click('#rcmloginsubmit')]);
+  // No login form since MailHub 0.5.0: the identity AppShield would add (python3 assertion.py).
+  await page.setExtraHTTPHeaders({ 'X-AppShield-Assertion': process.env.MAILHUB_ASSERTION });
+  await page.goto(RC + '?_task=mail', { waitUntil: 'networkidle0' });
   await sleep(1500);
 
   const env = await page.evaluate(() => ({

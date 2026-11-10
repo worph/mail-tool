@@ -11,8 +11,13 @@
 6. remove: the local copy is deleted, the provider keeps every message
 
 Run inside mailhub-mirror (it sees the account files at /accounts):
-    docker exec mailhub-mirror python3 /tmp/accounts-test.py <mailbox password>
+    docker exec -e MAILHUB_ASSERTION_SECRET mailhub-mirror python3 /tmp/accounts-test.py <mailbox password>
+
+The webmail has no login form (MailHub 0.5.0+): set MAILHUB_ASSERTION_SECRET (the app's .env) and
+copy assertion.py next to this script; requests carry the identity AppShield would add.
 """
+import sys, os; sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from assertion import opener
 import http.cookiejar, imaplib, json, os, re, smtplib, sys, time, urllib.parse, urllib.request
 from email.message import EmailMessage
 
@@ -21,11 +26,11 @@ USER, PASSWORD = "admin", sys.argv[1]
 PROVIDER = "mailhub-fakeprovider"
 EMAIL = "carol@gmail.test"
 SLUG = "carol_at_gmail.test"
-ACCFILE = f"/accounts/{SLUG}.json"
+ACCFILE = f"/accounts/{USER}/{SLUG}.json"   # one folder per user since 0.5.0
 LIVE = f"Live/{EMAIL}/INBOX"
 
 jar = http.cookiejar.CookieJar()
-web = urllib.request.build_opener(urllib.request.HTTPCookieProcessor(jar))
+web = opener()  # the owner's identity: the admin mailbox
 failures = []
 
 
@@ -82,9 +87,7 @@ def new_account(**over):
 
 
 print("== login")
-tok = token_of(req({"_task": "login"}))
-req({"_task": "login", "_action": "login"},
-    {"_token": tok, "_task": "login", "_action": "login", "_timezone": "UTC", "_user": USER, "_pass": PASSWORD})
+req({"_task": "mail"})  # mailhub_sso logs the identity in
 html = page()
 check("Mail accounts page renders", "Add an account" in html and "mh_preset" in html, html[:300])
 check("it is a Settings entry of its own", "plugin.mailhub_accounts" in req({"_task": "settings"}))

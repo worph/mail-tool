@@ -4,12 +4,14 @@ The global SMTP on the test box points at a dead host, so a delivered message pr
 identity's own SMTP (set by Settings → Mail accounts) was used.
 Run on mailhub-internal:  python send-as-test.py <mailbox password> <identity email>
 """
+import os as _os, sys as _sys; _sys.path.insert(0, _os.path.dirname(_os.path.abspath(__file__)))
+from assertion import opener  # no login form since MailHub 0.5.0: MAILHUB_ASSERTION_SECRET
 import http.cookiejar, imaplib, re, sys, time, urllib.parse, urllib.request
 
 RC, PASSWORD, FROM = "http://mailhub-webmail/", sys.argv[1], sys.argv[2]
 TO = "dave@other.test"
 jar = http.cookiejar.CookieJar()
-web = urllib.request.build_opener(urllib.request.HTTPCookieProcessor(jar))
+web = opener()
 
 
 def req(params, data=None, ajax_token=None):
@@ -21,9 +23,7 @@ def req(params, data=None, ajax_token=None):
         return resp.geturl(), resp.read().decode("utf-8", "replace")
 
 
-tok = re.search(r'name="_token" value="([^"]+)"', req({"_task": "login"})[1]).group(1)
-req({"_task": "login", "_action": "login"}, {"_token": tok, "_task": "login", "_action": "login",
-    "_timezone": "UTC", "_user": "admin", "_pass": PASSWORD})
+req({"_task": "mail"})  # mailhub_sso logs the identity in
 url, html = req({"_task": "mail", "_action": "compose"})
 cid = urllib.parse.parse_qs(urllib.parse.urlparse(url).query)["_id"][0]
 tok = re.search(r'"request_token":"([^"]+)"', html).group(1)

@@ -6,6 +6,8 @@
 
 Run inside a container on mailhub-internal:  python itip-test.py <password>
 """
+import os as _os, sys as _sys; _sys.path.insert(0, _os.path.dirname(_os.path.abspath(__file__)))
+from assertion import opener  # no login form since MailHub 0.5.0: MAILHUB_ASSERTION_SECRET
 import http.cookiejar, imaplib, json, re, sys, time, urllib.parse, urllib.request, base64
 
 RC = "http://mailhub-webmail/"
@@ -15,7 +17,7 @@ DAV, DAV_USER, DAV_PASS = sys.argv[2:5]
 IDENTITY = {"name": "Alice (Gmail 1)", "email": "alice@gmail.test", "smtp": "mailhub-fakeprovider:3025"}
 
 jar = http.cookiejar.CookieJar()
-web = urllib.request.build_opener(urllib.request.HTTPCookieProcessor(jar))
+web = opener()
 
 
 def req(params, data=None, token=None, ajax=False):
@@ -40,9 +42,7 @@ def step(msg):
 
 
 step("login")
-tok = token_of(req({"_task": "login"}))
-req({"_task": "login", "_action": "login"},
-    {"_token": tok, "_task": "login", "_action": "login", "_timezone": "UTC", "_user": USER, "_pass": PASSWORD})
+req({"_task": "mail"})  # mailhub_sso logs the identity in
 mail = req({"_task": "mail", "_mbox": "INBOX"})
 tok = token_of(mail)
 print("logged in:", bool(tok) and "rcmail" in mail)
